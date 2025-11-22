@@ -1,11 +1,14 @@
 from colorama import init, Fore, Style
 import datetime
+from pathlib import Path
 
 init(autoreset=True)
 
 def write_log_entry(message, logpath, color=None):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     entry = f"[{timestamp}] {message}"
+
+    Path(logpath).parent.mkdir(parents=True, exist_ok=True)
 
     # Write to log file
     with open(logpath, "a", encoding="utf-8") as f:
