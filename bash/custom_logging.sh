@@ -14,7 +14,9 @@ write_log_entry() {
     local logpath="$2"
     local color="${3:-$COLOR_RESET}"
     local timestamp
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    timestamp=$(date "+${TIMESTAMP_FORMAT:-%Y-%m-%d %H:%M:%S}")
+
+    mkdir -p "$(dirname "$logpath")"
 
     # Format output
     local formatted="${color}[${timestamp}] $message${COLOR_RESET}"

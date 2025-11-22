@@ -1,24 +1,16 @@
-def get_validated_int(prompt, default, min_val, max_val, label):
-    """
-    Prompt the user for an integer input with validation and fallback to default.
+def get_validated_int(prompt, default=None, min_value=None, max_value=None, label="value"):
+    """Prompt the user for an integer input with validation and fallback to default."""
 
-    Args:
-        prompt (str): The message to display to the user.
-        default (int): The default value to use if input is invalid or empty.
-        min_val (int): Minimum acceptable value.
-        max_val (int): Maximum acceptable value.
-        label (str): Label used in error messages.
+    min_value = -float("inf") if min_value is None else min_value
+    max_value = float("inf") if max_value is None else max_value
 
-    Returns:
-        int: Validated integer input or default.
-    """
     try:
         value = input(f"{prompt} (default: {default}): ").strip()
         if not value:
             return default
         value = int(value)
-        if value < min_val or value > max_val:
-            print(f"Invalid {label}. Must be between {min_val} and {max_val}. Using default: {default}")
+        if value < min_value or value > max_value:
+            print(f"Invalid {label}. Must be between {min_value} and {max_value}. Using default: {default}")
             return default
         return value
     except ValueError:
