@@ -1,6 +1,5 @@
 # Network-Diag-Utilities
 
-![Network Diagnostics Banner](./assets/banner.png) _(optional — add your own)_  
 
 ## 🚀 Overview  
 Network-Diag-Utilities is a lightweight collection of shell scripts designed for network diagnostics, troubleshooting, and performance benchmarking on Linux-based systems (particularly OpenWrt, Debian, or other embedded platforms). Whether you’re validating VPN throughput, testing router WiFi performance, or measuring bufferbloat, these tools help you quickly collect reliable data.
