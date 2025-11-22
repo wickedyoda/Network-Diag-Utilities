@@ -1,25 +1,24 @@
 #!/bin/bash
 
-# Path to Windows-based speedtest.exe (used in WSL fallback)
-SPEEDTEST_PATH="/mnt/c/Tools/SpeedtestCLI"
+# Cross-platform defaults aligned with the PowerShell scripts
+LOG_DIR="$(dirname "$0")/logs"
+DEFAULT_TARGET="8.8.8.8"
+TIMESTAMP_FORMAT="%H:%M:%S"
 
-# Path to Windows tracert.exe (used if Linux traceroute is unavailable)
+# Ping test
+PING_COUNT=4
+PING_DELAY_MS=1000
+
+# Bufferbloat / MTU discovery
+BUFFER_START_SIZE=1500
+MTU_STOP_SIZE=100
+MTU_DECREMENT=20
+
+# Paths for optional Windows fallbacks (useful when running under WSL/Git Bash)
+SPEEDTEST_PATH="/mnt/c/Tools/SpeedtestCLI"
 TRACERT_PATH="/mnt/c/Windows/System32"
 
-# Minimum MTU to test during discovery
-MIN_MTU=1200
-
-# Maximum MTU to start probing from
-MAX_MTU=1500
-
-# Step size for MTU decrement (can be adjusted for finer granularity)
-MTU_STEP=10
-
-# Default target for diagnostics if none is provided
-DEFAULT_TARGET="8.8.8.8"
-
-# Toggle to suppress warnings about missing tools (true/false)
+# Feature toggles
+ENABLE_IP_GEO=true
 SUPPRESS_WARNINGS=false
-
-# Optional: enable debug mode for verbose output
 DEBUG_MODE=false
