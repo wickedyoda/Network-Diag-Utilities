@@ -195,15 +195,6 @@ def run_speed_test(logpath):
         write_log_entry(f"Speedtest failed, using fallback: {e}", logpath)
         return fallback
 
-def run_bufferbloat_test(target, start_size, logpath, verbose=True):
-    system = platform.system().lower()
-    if system != "windows":
-        msg = "Bufferbloat test using -f flag is only supported on Windows."
-        write_log_entry(msg, logpath)
-        if verbose:
-            print(Fore.RED + msg + Style.RESET_ALL)
-        return False
-
     print(Fore.LIGHTBLUE_EX + "\n--- Bufferbloat MTU Discovery ---" + Style.RESET_ALL)
     write_log_entry(f"Starting bufferbloat test to {target} with DF flag", logpath)
 

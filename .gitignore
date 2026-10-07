@@ -1,0 +1,20 @@
+# Logs
+*.log
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# Config.json is a shared source of truth; keep it tracked
+# config.json
+
+# Temporary
+/tmp/
