@@ -1,0 +1,22 @@
+{
+  "Defaults": {
+    "TargetHost": "8.8.8.8",
+    "LogDirectory": "logs",
+    "TimestampFormat": "%H:%M:%S",
+    "PingCount": 4,
+    "PingDelayMs": 1000,
+    "BufferStartSize": 1500,
+    "MTUStopSize": 100,
+    "MTUDecrement": 20,
+    "SpeedtestPath": "",
+    "EnableIPGeo": true,
+    "DebugMode": false,
+    "SuppressWarnings": false
+  },
+  "Paths": {
+    "Bash": "bash/",
+    "Python": "python/",
+    "Archived": "archived/"
+  },
+  "Notes": "Single source of truth for both Python and Bash network diagnostics. Migrated from python/config.py and bash/config.sh on 2026-10-06."
+}
