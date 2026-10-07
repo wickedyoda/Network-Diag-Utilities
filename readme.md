@@ -60,12 +60,55 @@ Required packages: `colorama`, `requests`, `speedtest-cli`
 | `config.py` | Loads shared `config.json` |
 | `custom_logging.py` | Colour-mapped log writer |
 
-## 🖥️ Requirements
-* Linux, macOS, or Windows (via WSL/Git Bash)
-* `bash` or `sh` shell for the Bash suite
-* `python3` with `colorama`, `requests`, `speedtest-cli` for the Python suite
-* `ping`, `traceroute`/`mtr` for path diagnostics
-* Root/sudo for aggressive MTU probing (`ping -f` on Windows, `ping -M do` on Linux)
+## 🌐 OpenWrt Deployment
+
+The Bash suite is designed for OpenWrt and other embedded Linux systems. The scripts rely on `busybox`-compatible tools wherever possible, with the following external dependencies documented below.
+
+### Quick Deploy to OpenWrt
+
+1. **SSH into your OpenWrt router** (or access via LuCI)
+2. **Clone the repository**
+   ```bash
+   git clone https://github.com/wickedyoda/Network-Diag-Utilities.git
+   cd Network-Diag-Utilities
+   ```
+3. **Install dependencies** (OpenWrt uses `opkg`)
+   ```bash
+   opkg update
+   opkg install iputils-ping iputils-tracepath bc jq
+   # For speedtest
+   opkg install speedtest-cli
+   ```
+   Or on Debian/Ubuntu:
+   ```bash
+   sudo apt install iputils-ping traceroute bc jq speedtest-cli
+   ```
+4. **Make the scripts executable**
+   ```bash
+   chmod +x bash/*.sh
+   ```
+5. **Run**
+   ```bash
+   ./bash/network_diagnostics.sh
+   ```
+
+### Prerequisites Summary
+
+| Package | Required for | Package Manager |
+|---|---|---|
+| `iputils-ping` / `busybox ping` | Ping test | `opkg`, `apt`, `yum` |
+| `traceroute` or `iputils-tracepath` | Traceroute | `opkg`, `apt`, `yum` |
+| `bc` | Floating-point arithmetic in `run_ping_test.sh` | `opkg`, `apt`, `yum` |
+| `jq` | JSON parsing in `run_ip_geolocation.sh` and `run_speedtest.sh` | `opkg`, `apt`, `yum` |
+| `speedtest-cli` | Speedtest | `opkg`, `apt`, `yum` |
+| `python3`, `python3-requests` | Python suite (`network_diagnostics.py`) | N/A |
+
+### Notes for OpenWrt
+
+- **BusyBox `ping`**: Use `busybox ping` or install `iputils-ping` for full option support. The `-M do` flag for MTU discovery requires `iputils-ping` (BusyBox's ping may not support `-M`).
+- **Logging**: Logs default to `$(dirname "$0")/logs/` — a `tmpfs`-backed directory on OpenWrt. Increase the in-memory disk size in `/etc/config/fstab` or set `LOG_DIR` to a persistent location.
+- **Interactivity**: The scripts require a TTY for `read` prompts. Run via `./bash/network_diagnostics.sh` directly, or pipe input if non-interactive.
+- **No `sudo` on embedded**: OpenWrt packages typically run as root, so `sudo` is not required. The `-f` (DF) flag on `ping` requires root privileges.
 
 ## 🧪 Quick Start
 
