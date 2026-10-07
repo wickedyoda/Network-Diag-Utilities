@@ -5,31 +5,41 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.parent  # repo root, not python/
 CONFIG_PATH = BASE_DIR / "config.json"
 
-# Load shared configuration from the single source of truth
-with open(CONFIG_PATH, "r", encoding="utf-8") as _f:
-    _shared = json.load(_f)
-
-# Original defaults retained as fallback so nothing silently breaks on first run
-_ORIGINAL_DEFAULTS = {
+# Shared schema as defined in config.json (scalar keys under Defaults).
+_SHARED_DEFAULTS = {
     "TargetHost": "8.8.8.8",
-    "LogDirectory": str(BASE_DIR / "logs"),
+    "LogDirectory": "logs",
     "TimestampFormat": "%H:%M:%S",
     "PingCount": 4,
-    "PingDelay": 1000,
+    "PingDelayMs": 1000,
     "BufferStartSize": 1500,
     "MTUStopSize": 100,
     "MTUDecrement": 20,
-    "SpeedtestPath": str(Path.home() / "AppData" / "Local" / "Speedtest"),
+    "SpeedtestPath": "",
     "EnableIPGeo": True,
+    "DebugMode": False,
+    "WarningsSuppression": False,
 }
 
-# Build config dict from shared config, layering original defaults back in
-# so all original keys remain present regardless of the shared file's shape.
-config = {}
+# Build config with guaranteed Defaults and all original keys, thanks to
+# cached defaults when config.json is missing, unreadable, or malformed.
+try:
+    with open(CONFIG_PATH, "r", encoding="utf-8") as _f:
+        _shared = json.load(_f)
+    if not isinstance(_shared, dict):
+        raise ValueError("config.json top level is not an object")
+except (OSError, ValueError, json.JSONDecodeError) as _exc:
+    _shared = {}
+
+config = {"Defaults": dict(_SHARED_DEFAULTS)}
 for section, values in _shared.items():
-    if section == "Paths" or section == "Notes":
-        continue
     if isinstance(values, dict):
-        config[section] = {**_ORIGINAL_DEFAULTS, **values}
+        config[section] = {**_SHARED_DEFAULTS, **values}
     else:
         config[section] = values
+
+# Normalize the shared key to the original name so all Python callers match.
+if isinstance(config.get("Defaults"), dict):
+    _delay_ms = config["Defaults"].pop("PingDelayMs", None)
+    if _delay_ms is not None:
+        config["Defaults"]["PingDelay"] = _delay_ms

@@ -197,67 +197,116 @@ def run_speed_test(logpath):
 
     print(Fore.LIGHTBLUE_EX + "\n--- Bufferbloat MTU Discovery ---" + Style.RESET_ALL)
     write_log_entry(f"Starting bufferbloat test to {target} with DF flag", logpath)
+    mtu_value = run_bufferbloat_test(target, start_size=1500, logpath=logpath, verbose=True)
+    write_log_entry(f"Bufferbloat result: {mtu_value}", logpath, Fore.LIGHTBLACK_EX)
+    print(Fore.LIGHTBLACK_EX + f"Bufferbloat result: {mtu_value}", Style.RESET_ALL)
 
-    size = start_size
-    mtu_found = False
-    final_mtu = None
 
-    with open(logpath, "a", encoding="utf-8") as f:
-        f.write("\n--- Bufferbloat MTU Discovery ---\n")
+def run_bufferbloat_test(target, start_size=None, logpath=None, verbose=True):
+    """Bufferbloat / MTU discovery test using IP fragmentation probing.
 
-        while size > 0:
-            cmd = ["ping", target, "-f", "-l", str(size), "-n", "1"]
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-                output = result.stdout + result.stderr
-                f.write(f"\nPacket size: {size}\n{output}\n")
+    Sends ICMP echo packets with the Don't Fragment (DF) flag set and reduces
+    the payload until a non-fragmented reply is received. Cross-platform:
+    - Windows:      ping -f -l <size>
+    - Linux:        ping -M do -s <size - 28>
+    - macOS:        ping -D -s <size - 28>
+    """
+    import platform
+    import subprocess
+    from pathlib import Path
 
-                if verbose:
-                    print(Fore.LIGHTBLACK_EX + f"Testing size: {size}" + Style.RESET_ALL)
-                    print(output.strip())
+    from colorama import Fore, Style
 
-                if "Packet needs to be fragmented but DF set." in output:
-                    size -= 20
-                    continue
-                else:
-                    mtu_found = True
-                    final_mtu = size
-                    break
+    from config import config
+    from custom_logging import write_log_entry
 
-            except subprocess.TimeoutExpired:
-                f.write(f"\nTimeout at size {size}\n")
-                if verbose:
-                    print(Fore.RED + f"Timeout at size {size}" + Style.RESET_ALL)
-                size -= 20
-            except Exception as e:
-                f.write(f"\nError at size {size}: {e}\n")
-                if verbose:
-                    print(Fore.RED + f"Error at size {size}: {e}" + Style.RESET_ALL)
-                size -= 20
-
-    if mtu_found:
-        msg = f"Maximum non-fragmented packet size: {final_mtu} bytes"
-        write_log_entry(msg, logpath)
-        print(Fore.GREEN + msg + Style.RESET_ALL)
-
-        # Optional: persist to config or external file
-        try:
-            with open("mtu_result.txt", "w") as mtu_file:
-                mtu_file.write(f"MTU discovered for {target}: {final_mtu} bytes\n")
-        except Exception as e:
-            print(Fore.RED + f"Failed to write MTU result: {e}" + Style.RESET_ALL)
-
-        return True
+    defaults = config["Defaults"]
+    if start_size is not None:
+        packet_size = start_size
     else:
-        msg = "Failed to find non-fragmented packet size."
-        write_log_entry(msg, logpath)
-        print(Fore.RED + msg + Style.RESET_ALL)
-        return False
+        packet_size = defaults["BufferStartSize"]
+    min_size = defaults["MTUStopSize"]
+    step = defaults["MTUDecrement"]
+
+    log_file = Path(logpath or Path(defaults["LogDirectory"]) / "bufferbloat.log")
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+
+    write_log_entry("--- Bufferbloat / MTU Discovery ---", str(log_file), Fore.CYAN)
+    write_log_entry(f"Target: {target}", str(log_file), Fore.GRAY)
+
+    system = platform.system().lower()
+    if system == "windows":
+        def build_ping_args(tgt, sz):
+            return ["ping", tgt, "-f", "-l", str(sz), "-n", "1"]
+    elif system == "linux":
+        def build_ping_args(tgt, sz):
+            payload = max(0, sz - 28)
+            args = ["ping", "-c", "1", "-s", str(payload), tgt]
+            args.insert(3, "-M")
+            args.insert(4, "do")
+            return args
+    else:
+        # macOS (and others)
+        def build_ping_args(tgt, sz):
+            payload = max(0, sz - 28)
+            return ["ping", "-c", "1", "-D", "-s", str(payload), tgt]
+
+    while packet_size >= min_size:
+        write_log_entry(f"Testing with packet size: {packet_size} bytes", str(log_file), Fore.YELLOW)
+        cmd = build_ping_args(target, packet_size)
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        except FileNotFoundError:
+            write_log_entry("Ping command not available for MTU discovery.", str(log_file), Fore.RED)
+            return False
+        except subprocess.TimeoutExpired:
+            write_log_entry(f"Timeout at {packet_size} bytes", str(log_file), Fore.RED)
+            packet_size -= step
+            continue
+
+        output = (result.stdout or "") + (result.stderr or "")
+        with open(log_file, "a", encoding="utf-8") as handle:
+            handle.write(output + "\n")
+
+        fragmented = any(
+            phrase in output
+            for phrase in [
+                "Packet needs to be fragmented",
+                "message too long",
+                "Frag needed",
+                "DF set",
+            ]
+        )
+
+        if fragmented or result.returncode != 0:
+            write_log_entry(
+                f"Fragmentation detected at {packet_size} bytes. Reducing size...",
+                str(log_file),
+                Fore.RED,
+            )
+            packet_size -= step
+            continue
+
+        write_log_entry(
+            f"Non-fragmented response at {packet_size} bytes. Bufferbloat unlikely at this size.",
+            str(log_file),
+            Fore.GREEN,
+        )
+        if verbose:
+            print(Fore.GREEN + f"Maximum non-fragmented packet size: {packet_size} bytes" + Style.RESET_ALL)
+        return packet_size
+
+    write_log_entry(
+        f"Unable to find non-fragmented size above {min_size} bytes.",
+        str(log_file),
+        Fore.RED,
+    )
+    if verbose:
+        print(Fore.RED + f"Unable to find non-fragmented size above {min_size} bytes." + Style.RESET_ALL)
+    return None
 
 
-# ----------------------------
-# Summary + Menu
-# ----------------------------
 def run_all_tests(target, logpath):
     print(Fore.LIGHTBLACK_EX + f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting diagnostics..." + Style.RESET_ALL)
     write_log_entry(f"Running full diagnostics on {target}", logpath, Fore.CYAN)
